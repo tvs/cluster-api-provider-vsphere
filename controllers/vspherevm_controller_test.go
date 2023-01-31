@@ -29,7 +29,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apirecord "k8s.io/client-go/tools/record"
+	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	capierrors "sigs.k8s.io/cluster-api/errors"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -630,6 +632,30 @@ func Test_reconcile(t *testing.T) {
 			g := NewWithT(t)
 			// Assertion to verify that cluster module info is not mandatory
 			g.Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	t.Run("during VM reconciliation", func(t *testing.T) {
+		failedVM := vsphereVM.DeepCopy()
+		failedVM.Status.FailureReason = capierrors.MachineStatusErrorPtr(capierrors.UpdateMachineError)
+		failedVM.Status.FailureMessage = pointer.StringPtr(fmt.Sprintf("Unable to find VM by BIOS UUID %s. The vm was removed from infra", failedVM.Spec.BiosUUID))
+
+		fakeVMSvc := new(fake_svc.VMService)
+
+		initObjs := []client.Object{vsphereCluster, machine, failedVM}
+		t.Run("when VM has failed", func(t *testing.T) {
+			r := setupReconciler(fakeVMSvc, initObjs...)
+			_, err := r.reconcile(&context.VMContext{
+				ControllerContext: r.ControllerContext,
+				VSphereVM:         failedVM,
+				Logger:            r.Logger,
+			}, fetchClusterModuleInput{
+				VSphereCluster: vsphereCluster,
+				Machine:        machine,
+			})
+
+			g := NewWithT(t)
+			g.Expect(err).To(HaveOccurred())
 		})
 	})
 }

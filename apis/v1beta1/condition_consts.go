@@ -87,6 +87,11 @@ const (
 	// retry the operation, but a user intervention might be required to fix the problem.
 	TaskFailure = "TaskFailure"
 
+	// UnderlyingVMFailedReason (Severity=Error) documents a that a VSphereVM has
+	// failed (e.g., that it has been deleted from the underlying infrastructure)
+	// These kinds of errors are usually terminal and require remediation.
+	UnderlyingVMFailedReason = "UnderlyingVMFailed"
+
 	// WaitingForNetworkAddressesReason (Severity=Info) documents a VSphereMachine waiting for the the machine network
 	// settings to be reported after machine being powered on.
 	//

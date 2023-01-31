@@ -389,7 +389,9 @@ func (r vmReconciler) deleteNode(ctx *context.VMContext, name string) error {
 func (r vmReconciler) reconcileNormal(ctx *context.VMContext) (reconcile.Result, error) {
 	if ctx.VSphereVM.Status.FailureReason != nil || ctx.VSphereVM.Status.FailureMessage != nil {
 		r.Logger.Info("VM is failed, won't reconcile", "namespace", ctx.VSphereVM.Namespace, "name", ctx.VSphereVM.Name)
-		return reconcile.Result{}, nil
+		failureMessage := pointer.StringDeref(ctx.VSphereVM.Status.FailureMessage, "")
+		conditions.MarkFalse(ctx.VSphereVM, infrav1.VMProvisionedCondition, infrav1.UnderlyingVMFailedReason, clusterv1.ConditionSeverityError, failureMessage)
+		return reconcile.Result{}, errors.Errorf("underlying VM has failed: %q", failureMessage)
 	}
 	// If the VSphereVM doesn't have our finalizer, add it.
 	ctrlutil.AddFinalizer(ctx.VSphereVM, infrav1.VMFinalizer)
